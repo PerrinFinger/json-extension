@@ -24,6 +24,8 @@ from json import JSONDecodeError
 from typing import Optional,List
 
 
+
+
 from pygls.lsp.methods import (COMPLETION, TEXT_DOCUMENT_DID_CHANGE,
                                TEXT_DOCUMENT_DID_CLOSE, TEXT_DOCUMENT_DID_OPEN, 
                                TEXT_DOCUMENT_SEMANTIC_TOKENS_FULL,DOCUMENT_HIGHLIGHT)
@@ -41,6 +43,11 @@ from pygls.lsp.types.basic_structures import (WorkDoneProgressBegin,
                                               WorkDoneProgressEnd,  
                                               WorkDoneProgressReport)
 from pygls.server import LanguageServer
+
+import utils
+
+#from utils import code_checks,get_error_cordinates
+#from .server import code_checker
 
 COUNT_DOWN_START_IN_SECONDS = 10
 COUNT_DOWN_SLEEP_IN_SECONDS = 1
@@ -62,61 +69,52 @@ class JsonLanguageServer(LanguageServer):
     def __init__(self):
         super().__init__()
 
-
-
-
 json_server = JsonLanguageServer()
-#, CompletionOptions(trigger_characters=['z'])
-#def highlight(server: json_server, params:  DocumentHighlightParams
-#) -> Optional[List[DocumentHighlight]]:
 
-
-"""
-def script(project: Optional[Project], document: Document) -> Script:
-    #Simplifies getting jedi Script.
-    return Script(code=document.source, path=document.path, project=project)
-"""
-#server: json_server
-#DocumentHighlightKind)
-#DocumentHighlightOptions(trigger_characters=['z'])
 @json_server.feature(DOCUMENT_HIGHLIGHT)
 def highlight(ls, params: DocumentHighlightParams
 ) -> Optional[DocumentHighlightKind]:
-    #lines = (params.position.line, params.position.character)
-    #document = ls.workspace.get_document(params.text_document.uri)
-    #names = document.get_references(lines,scope="file")
+
+    # Test to see when function is triggered.     
     ls.show_message_log('woooooooooooooo!')
-    #jedi_script = jedi_utils.script(server.project, document)
-    #jedi_lines = jedi_utils.line_column(params.position)
-    #names = jedi_script.get_references(*jedi_lines, scope="file")
+    # This code will be generated using doc_to_string() in utils once the function is completed
+    # e.g code = doc_to_string(ls.document)
+    code = """
+class Foo:
+    def __init__(self, x):
+        self.x = x
     
-    
+    def bar(self):
+        if self.x < 10:
+            return True
+        else:
+            return False
+""".strip() 
 
     
-    x = Range(start=Position(line=0, character=0),end=Position(line=0, character=10))
-    y = Range(start=Position(line = 1, character=0),end=Position(line = 1, character=5))
-    z = Range(start=Position(line=2, character=0),end=Position(line=2, character=10))
-    #ls.show_message_log("Hello")
+    matches = utils.code_checks(code)
+    ranges = utils.get_error_cordinates(matches)
+    lsp_ranges = [Range(start=Position(line=x[0]-1, character=x[1]),end=Position(line=x[2]-1, character=x[3])) for x in ranges]
 
 
-    lsp_ranges = [x,y,z]
+
+
+    # Checking match coordinates
+    #print(lsp_ranges)
+
+    # Hard Coded Highlighting Tests Below V
+
+    #x = Range(start=Position(line=0, character=0),end=Position(line=0, character=10))
+   # y = Range(start=Position(line = 1, character=0),end=Position(line = 1, character=5))
+    #z = Range(start=Position(line=2, character=0),end=Position(line=2, character=10))
+    #lsp_ranges = [x,y,z]
+
     highlight_names = [
         DocumentHighlight(range=lsp_range)
         for lsp_range in lsp_ranges
         if lsp_range
     ]
     return highlight_names if highlight_names else None 
-
-    #lines = (params.position.line, params.position.character)
-    #names = 
-
-
-    #lsp_range = 10
-    #server.DocumentHighlight(document,params, range=lsp_range)
-
-
-
-   
 
 
 def _validate(ls, params):
