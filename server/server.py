@@ -74,17 +74,7 @@ json_server = JsonLanguageServer()
 @json_server.feature(HOVER)
 def hover(ls, params: TextDocumentPositionParams
 ) -> Optional[Hover]:
-    code = """
-class Foo:
-    def __init__(self, x):
-        self.x = x
-    
-    def bar(self):
-        if self.x < 10:
-            return True
-        else:
-            return False
-""".strip() 
+    code = utils.doc_to_string(ls,params).strip()
     #range = pygls_utils.current_word_range(document, params.position)
     
     matches = utils.code_checks(code)
@@ -107,7 +97,7 @@ def highlight(ls, params: DocumentHighlightParams
     ls.show_message_log('woooooooooooooo!')
     # This code will be generated using doc_to_string() in utils once the function is completed
     #code2 = TextDocumentItem(uri = params.text_document.uri)
-    code = utils.doc_to_string(ls,params)
+    code = utils.doc_to_string(ls,params).strip()
     #print(code1.strip())
     #print(code1)
     #text_doc = ls.workspace.get_document(params.text_document.uri)
