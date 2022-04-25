@@ -23,6 +23,10 @@
         "title": "TextDocument DocumentHighlight"
       },
       {
+        "command": "textDocument/hover",
+        "title": "Hover"
+      },
+      {
         "command": "countDownBlocking",
         "title": "Count down 10 seconds [Blocking]"
       },

@@ -28,7 +28,7 @@ from typing import Optional,List
 
 from pygls.lsp.methods import (COMPLETION, TEXT_DOCUMENT_DID_CHANGE,
                                TEXT_DOCUMENT_DID_CLOSE, TEXT_DOCUMENT_DID_OPEN, 
-                               TEXT_DOCUMENT_SEMANTIC_TOKENS_FULL,DOCUMENT_HIGHLIGHT)
+                               TEXT_DOCUMENT_SEMANTIC_TOKENS_FULL,DOCUMENT_HIGHLIGHT,HOVER)
 from pygls.lsp.types import (CompletionItem, CompletionList, CompletionOptions,
                              CompletionParams, ConfigurationItem,
                              ConfigurationParams, Diagnostic,
@@ -37,7 +37,7 @@ from pygls.lsp.types import (CompletionItem, CompletionList, CompletionOptions,
                              DidOpenTextDocumentParams, MessageType, Position,
                              Range, Registration, RegistrationParams,
                              SemanticTokens, SemanticTokensLegend, SemanticTokensParams,
-                             Unregistration, UnregistrationParams,TextDocumentPositionParams,DocumentHighlight,DocumentHighlightParams,Position,Range,DocumentHighlightOptions,DocumentHighlightKind)
+                             Unregistration, TextDocumentItem,UnregistrationParams,Hover,TextDocumentPositionParams,DocumentHighlight,DocumentHighlightParams,Position,Range,DocumentHighlightOptions,DocumentHighlightKind)
                              
 from pygls.lsp.types.basic_structures import (WorkDoneProgressBegin,
                                               WorkDoneProgressEnd,  
@@ -64,21 +64,16 @@ class JsonLanguageServer(LanguageServer):
     CMD_UNREGISTER_COMPLETIONS = 'unregisterCompletions'
 
     CONFIGURATION_SECTION = 'jsonServer'
+    HOVER = 'textDocument/hover'
     DOCUMENT_HIGHLIGHT = 'textDocument/documentHighlight'
 
     def __init__(self):
         super().__init__()
 
 json_server = JsonLanguageServer()
-
-@json_server.feature(DOCUMENT_HIGHLIGHT)
-def highlight(ls, params: DocumentHighlightParams
-) -> Optional[DocumentHighlightKind]:
-
-    # Test to see when function is triggered.     
-    ls.show_message_log('woooooooooooooo!')
-    # This code will be generated using doc_to_string() in utils once the function is completed
-    # e.g code = doc_to_string(ls.document)
+@json_server.feature(HOVER)
+def hover(ls, params: TextDocumentPositionParams
+) -> Optional[Hover]:
     code = """
 class Foo:
     def __init__(self, x):
@@ -90,6 +85,47 @@ class Foo:
         else:
             return False
 """.strip() 
+    #range = pygls_utils.current_word_range(document, params.position)
+    
+    matches = utils.code_checks(code)
+    ranges = utils.get_error_cordinates(matches)
+    lsp_ranges = [Range(start=Position(line=x[0]-1, character=x[1]),end=Position(line=x[2]-1, character=x[3])) for x in ranges]
+
+    for i in range(len(ranges)):
+        if params.position.line ==  ranges[i][0] or params.position.line ==  ranges[i][2]:
+            #Hover(range = lsp_ranges[i])
+            ls.show_message_log('HOVER')
+
+    return 
+            
+# text_object:  TextDocumentItem
+@json_server.feature(DOCUMENT_HIGHLIGHT)
+def highlight(ls, params: DocumentHighlightParams
+) -> Optional[DocumentHighlightKind]:
+
+    # Test to see when function is triggered.     
+    ls.show_message_log('woooooooooooooo!')
+    # This code will be generated using doc_to_string() in utils once the function is completed
+    #code2 = TextDocumentItem(uri = params.text_document.uri)
+    code = utils.doc_to_string(ls,params)
+    #print(code1.strip())
+    #print(code1)
+    #text_doc = ls.workspace.get_document(params.text_document.uri)
+    #print(params.text)
+   
+
+    #print(utils.doc_to_string(ls,params))
+    #code = """
+#class Foo:
+    #def __init__(self, x):
+        #self.x = x
+    
+    #def bar(self):
+        #if self.x < 10:
+            #return True
+        #else:
+            #return False
+#""".strip() 
 
     
     matches = utils.code_checks(code)
@@ -115,6 +151,9 @@ class Foo:
         if lsp_range
     ]
     return highlight_names if highlight_names else None 
+
+
+
 
 
 def _validate(ls, params):
