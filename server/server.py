@@ -37,23 +37,45 @@ from pygls.lsp.types import (CompletionItem, CompletionList, CompletionOptions,
                              DidOpenTextDocumentParams, MessageType, Position,
                              Range, Registration, RegistrationParams,
                              SemanticTokens, SemanticTokensLegend, SemanticTokensParams,
-                             Unregistration, TextDocumentItem,UnregistrationParams,Hover,TextDocumentPositionParams,DocumentHighlight,DocumentHighlightParams,Position,Range,DocumentHighlightOptions,DocumentHighlightKind)
+                             Unregistration,DocumentHighlightClientCapabilities, TextDocumentItem,MarkupContent,UnregistrationParams,Hover,TextDocumentPositionParams,DocumentHighlight,DocumentHighlightParams,Position,Range,DocumentHighlightOptions,DocumentHighlightKind)
                              
 from pygls.lsp.types.basic_structures import (WorkDoneProgressBegin,
                                               WorkDoneProgressEnd,  
                                               WorkDoneProgressReport)
 from pygls.server import LanguageServer
+from qchecker.match import aggregate_match_types
+from qchecker.substructures import *
 
-import utils
+def doc_to_string(ls,params):
+    text_doc = ls.workspace.get_document(params.text_document.uri)
+    string = open(text_doc.path, 'r').read()
+    return string
 
-#from utils import code_checks,get_error_cordinates
-#from .server import code_checker
+
+def code_checks(code):
+    matches = []
+    for substructure in SUBSTRUCTURES:
+        matches += substructure.iter_matches(code)
+    return matches
+
+
+def get_markdown(matches):
+    return matches.discription
+
+def get_error_cordinates(matches):
+    x = []
+    for match in matches:
+        temp = match.text_range
+        x.append([temp.from_line,temp.from_offset,temp.to_line,temp.to_offset])
+    return x
+
 
 COUNT_DOWN_START_IN_SECONDS = 10
 COUNT_DOWN_SLEEP_IN_SECONDS = 1
 
 
 class JsonLanguageServer(LanguageServer):
+    #initialization_options: InitializationOptions
     CMD_COUNT_DOWN_BLOCKING = 'countDownBlocking'
     CMD_COUNT_DOWN_NON_BLOCKING = 'countDownNonBlocking'
     CMD_PROGRESS = 'progress'
@@ -74,66 +96,27 @@ json_server = JsonLanguageServer()
 @json_server.feature(HOVER)
 def hover(ls, params: TextDocumentPositionParams
 ) -> Optional[Hover]:
-    code = utils.doc_to_string(ls,params).strip()
-    #range = pygls_utils.current_word_range(document, params.position)
-    
-    matches = utils.code_checks(code)
-    ranges = utils.get_error_cordinates(matches)
+    code = doc_to_string(ls,params).strip()
+    matches = code_checks(code)
+    ranges = get_error_cordinates(matches)
     lsp_ranges = [Range(start=Position(line=x[0]-1, character=x[1]),end=Position(line=x[2]-1, character=x[3])) for x in ranges]
-
     for i in range(len(ranges)):
-        if params.position.line ==  ranges[i][0] or params.position.line ==  ranges[i][2]:
-            #Hover(range = lsp_ranges[i])
-            ls.show_message_log('HOVER')
+        hover_text =  matches[i].description.content
+        if params.position.line >= ranges[i][0] -1 and params.position.line <=  ranges[i][2]:
+            contents = MarkupContent(kind='markdown', value=hover_text)
+            return Hover(contents=contents, range=lsp_ranges[i])
+    return        
+    
 
-    return 
-            
-# text_object:  TextDocumentItem
+
+
 @json_server.feature(DOCUMENT_HIGHLIGHT)
-def highlight(ls, params: DocumentHighlightParams
-) -> Optional[DocumentHighlightKind]:
-
-    # Test to see when function is triggered.     
-    ls.show_message_log('woooooooooooooo!')
-    # This code will be generated using doc_to_string() in utils once the function is completed
-    #code2 = TextDocumentItem(uri = params.text_document.uri)
-    code = utils.doc_to_string(ls,params).strip()
-    #print(code1.strip())
-    #print(code1)
-    #text_doc = ls.workspace.get_document(params.text_document.uri)
-    #print(params.text)
-   
-
-    #print(utils.doc_to_string(ls,params))
-    #code = """
-#class Foo:
-    #def __init__(self, x):
-        #self.x = x
-    
-    #def bar(self):
-        #if self.x < 10:
-            #return True
-        #else:
-            #return False
-#""".strip() 
-
-    
-    matches = utils.code_checks(code)
-    ranges = utils.get_error_cordinates(matches)
+def highlight(ls, params
+) -> Optional[List[DocumentHighlight]]:  
+    code = doc_to_string(ls,params).strip()
+    matches = code_checks(code)
+    ranges = get_error_cordinates(matches)
     lsp_ranges = [Range(start=Position(line=x[0]-1, character=x[1]),end=Position(line=x[2]-1, character=x[3])) for x in ranges]
-
-
-
-
-    # Checking match coordinates
-    #print(lsp_ranges)
-
-    # Hard Coded Highlighting Tests Below V
-
-    #x = Range(start=Position(line=0, character=0),end=Position(line=0, character=10))
-   # y = Range(start=Position(line = 1, character=0),end=Position(line = 1, character=5))
-    #z = Range(start=Position(line=2, character=0),end=Position(line=2, character=10))
-    #lsp_ranges = [x,y,z]
 
     highlight_names = [
         DocumentHighlight(range=lsp_range)
@@ -141,9 +124,6 @@ def highlight(ls, params: DocumentHighlightParams
         if lsp_range
     ]
     return highlight_names if highlight_names else None 
-
-
-
 
 
 def _validate(ls, params):
